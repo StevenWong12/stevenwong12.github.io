@@ -1,0 +1,103 @@
+import scipy.integrate as spi
+import numpy as np
+import pylab as pl
+import networkx as nx
+import random as rd
+
+K = 300 # 传播的时间
+BETA = 0.3  # 第一种谣言的传播率
+GAMMA = 0.3  # 第二种的传播率
+N = 100  # 网络节点数
+a1 = 0.5 # 谣言1的留存率
+a2 = 0.5 # 谣言2的留存率
+
+# 初始化BA网络
+BA = nx.barabasi_albert_graph(N, 2)
+# 初始化ER网络
+ER = nx.erdos_renyi_graph(N, 0.01)
+# 初始化WS小世界网络
+WS = nx.watts_strogatz_graph(N, 10, 0.01)
+A = nx.to_numpy_matrix(BA)
+# 在邻接矩阵内进行一次传播,状态1表示未被感染,状态2表示受到第一种谣言影响，3表示受到第二种
+def Spread(mat, beta, gamma, vec, lam): # vec用来表示为各节点的状态
+    mu = 1/lam
+    nvec = np.array(vec)
+    for i in range(vec.size):
+        if vec[i] == 1:
+            num1 = 0
+            num2 = 0
+            for j in range(vec.size):
+                if mat[i, j] == 1 and vec[j] == 2:
+                    num1 += 1
+            prob1 = 1 - (1 - beta) **num1
+            if prob1 > mu:
+                nvec[i] = 2
+
+            for j in range(vec.size):
+                if mat[i, j] == 1 and  vec[j] == 3 and nvec[i] ==1:
+                    num2 += 1
+            prob2 = (1-prob1) * (1 - (1 - gamma) **num2)
+            if nvec[i] == 1:
+                if prob2 > mu:
+                    nvec[i] = 3
+
+            prob3 = (1 - prob1) * (1 - prob2)
+            if nvec[i] == 1:
+                if prob3 > mu:
+                    nvec[i] = 1
+
+        elif vec[i] == 3:
+            num = 0
+            for j in range(vec.size):
+                if mat[i, j] == 1 and vec[j] == 2:
+                    num += 1
+            prob = 1 - (1 - beta)**num
+            if prob > mu:
+                nvec[i] = 2
+
+
+    return nvec
+
+def MultiSpread(N, beta, gamma, lam, t):
+    vec = np.array([1 for i in range(N)])
+
+    rNum1 = rd.randint(0, N)
+    rNum2 = rNum1
+    while rNum1 == rNum2:
+        rNum2 = rd.randint(0, N)
+    vec[rNum1] = 2
+    vec[rNum2] = 3
+
+    st1 = [np.where(np.array(vec) == 1, 1, 0).sum()]
+    st2 = [np.where(np.array(vec) == 2, 1, 0).sum()]
+    st3 = [np.where(np.array(vec) == 3, 1, 0).sum()]
+
+    for i in range(t):
+        vec = Spread(A, beta, gamma, vec, lam)
+        for j in range(vec.size):
+            if vec[j] == 2:
+                if rd.random() < a1:
+                    vec[j] = 1
+            elif vec[j] == 3:
+                if rd.random() < a2:
+                    vec[j] = 1
+        st1.append(np.where(np.array(vec) == 1, 1, 0).sum())
+        st2.append(np.where(np.array(vec) == 2, 1, 0).sum())
+        st3.append(np.where(np.array(vec) == 3, 1, 0).sum())
+
+    pl.plot(st1, color='blue')
+    pl.plot(st2, color='red')
+    pl.plot(st3, color ='green')
+
+    print(st1)
+    print(st2)
+    print(st3)
+
+
+    pl.show()
+
+    return
+a, b = np.linalg.eig(A) # a是矩阵的特征值
+print(a)
+print(max(a))
+MultiSpread(N, BETA, GAMMA, max(a), K)
