@@ -1,0 +1,110 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+import networkx as nx
+import multinetx as mx
+
+import random
+group1 = 5 # 第一层网络的group数
+group2 = 5 #第二层网络的group数
+
+N = 200 # 节点数
+p1 = 0.7 # group内的成员的连接概率
+p2 = 0.1 # group外的成员的连接概率
+
+# 分别构建各层网络
+
+graph1 = nx.Graph()
+graph2 = nx.Graph()
+
+graph1_node = [i for i in range(N)]
+graph2_node = [i for i in range(N)]
+
+graph1.add_nodes_from(graph1_node)
+graph2.add_nodes_from(graph2_node)
+
+group_in_layer1 = [i for i in range(group1)]
+group_in_layer2 = [i for i in range(group2)]
+
+grouplist1 = []
+grouplist2 = []
+
+for node in graph1_node:
+	grouplist1.append(random.choice(group_in_layer1))
+for node in graph2_node:
+	grouplist2.append(random.choice(group_in_layer2))
+
+
+# 节点间开始连接
+
+graph1_edge = []
+graph2_edge = []
+
+for i in range(N):
+	for j in range(i+1, N):
+		prob = random.random()
+		if(grouplist1[i] == grouplist1[j]):
+		    if(prob <= p1):
+			    graph1_edge.append((i,j))
+		else:
+			if(prob <= p2):
+			    graph1_edge.append((i,j)) 
+
+for i in range(N):
+	for j in range(i+1, N):
+		prob = random.random()
+		if(grouplist2[i] == grouplist2[j]):
+		    if(prob <= p1):
+			    graph2_edge.append((i,j))
+		else:
+			if(prob <= p2):
+			    graph2_edge.append((i,j)) 
+
+
+graph1.add_nodes_from(graph1_node)
+graph1.add_edges_from(graph1_edge)
+graph2.add_nodes_from(graph2_node)
+graph2.add_edges_from(graph2_edge)
+
+
+# 构建多层网络
+mg = mx.MultilayerGraph()
+mg.add_layer(graph1)
+mg.add_layer(graph2)
+
+
+# 画图
+adj_block = mx.lil_matrix(np.zeros((N*2,N*2)))
+
+adj_block[0  :  N ,   N:2*N] = np.identity(N)   # L_12
+adj_block += adj_block.T
+adj_block[adj_block>1] = 1
+
+mg = mx.MultilayerGraph(list_of_layers=[graph1,graph2],
+						inter_adjacency_matrix=adj_block)
+
+mg.set_edges_weights(inter_layer_edges_weight=5)
+
+mg.set_intra_edges_weights(layer=0,weight=1)
+mg.set_intra_edges_weights(layer=1,weight=2)
+
+fig = plt.figure(figsize=(15,5))
+ax1 = fig.add_subplot(121)
+ax1.imshow(mx.adjacency_matrix(mg,weight='weight').todense(),
+		  origin='upper',interpolation='nearest',cmap=plt.cm.jet_r)
+ax1.set_title('supra adjacency matrix')
+
+ax2 = fig.add_subplot(122)
+ax2.axis('off')
+ax2.set_title('general multiplex network')
+pos = mx.get_position(mg,mx.spectral_layout(mg.get_layer(1)),
+					  layer_vertical_shift=.3,
+					  layer_horizontal_shift=0.9,
+					  proj_angle=.2)
+mx.draw_networkx(mg,pos=pos,ax=ax2,node_size=50,with_labels=False,
+				 edge_color=[mg[a][b]['weight'] for a,b in mg.edges()],
+				 edge_cmap=plt.cm.jet_r)
+
+print(grouplist1)
+print(grouplist2)				 
+plt.show()
