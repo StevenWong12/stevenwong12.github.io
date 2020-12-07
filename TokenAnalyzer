@@ -1,0 +1,318 @@
+#include<iostream>
+#include<string>
+#include<vector>
+using namespace std;
+
+void print_token_type(const string& str, int n);
+
+
+// 寻找某个符号在数组中的位置
+int find_pos(const string &str, const string arr[], int n){
+    for(int i = 0; i < n ;i++)
+        if(arr[i] == str )return i;
+    return -1;
+}
+
+//用于描述已定义的字符
+int findTheString(const vector<string> vec, const string& str){
+    for(int i = 0 ; i < vec.size(); i++)
+        if(vec[i] == str) 
+            return i+1;
+    return -1;
+}
+
+// 保留字的编号为数组中的pos + 1
+const string ReservedWords[35] = { "and", "array", "begin", "bool", "call", "case", "char",
+"constant", "dim", "do", "else", "end", "false", "for", "if", "input", "integer", 
+"not", "of", "or", "output", "procedure", "program", "read", "real", "repeat",
+"set", "stop", "then", "to", "true", "until", "var", "while", "write"};
+
+// 双界符 const string Bound[6] = { "<>", "<=", ">=", ":=", "/*", "*/"};
+
+// 单界符的编码为数组中的pos + 39
+const string one_side_Bound[22] = { "(", ")", "*", "*/", "+", ",", "-",".", "..", "/", 
+                                    "/*", ":", ":=", ";", "<", "<=", "<>", "=", ">", ">=",
+                                    "[", "]"};
+
+const char bounder_in_char[17] = {'(', ')', '*', '/', '+', ',','-','.',':','=', ';', '<','=',
+'<', '>', '[', ']'};
+
+static int number_of_identifier = 0;
+
+bool isBounder(const string& ch){
+    for(int i = 0 ; i < 22; i++)
+        if(one_side_Bound[i] == ch)
+            return true;
+    return false;
+}
+
+bool isBounder(const char& ch){
+    for(int i = 0 ; i < 17 ; i++)
+        if(bounder_in_char[i] == ch)
+            return true;
+    return false;
+}
+
+bool isReservedWords(const string & ch){
+    for(int i = 0 ; i < 35; i++)
+        if(ReservedWords[i] == ch)
+            return true;
+    return false;
+}
+
+
+bool isIdentifier(const string& str){
+    if((str.front() >='A' && str.front() <='Z') || (str.front() >= 'a' && str.front() <= 'z'))
+        for(string::const_iterator itr = str.cbegin(); itr != str.cend(); itr++){
+            if((*itr >='A' && *itr <= 'Z') || (*itr >='a' && *itr <= 'z') || (*itr >= '0'&& *itr <= '9'))
+                continue;
+            else
+                return false;
+
+        // <标识符> → <字母>│<标识符> <数字>│<标识符> <字母>
+        // 例：a121ad, bcd3241, cs23as
+        }
+    else
+        return false;
+
+    return true;
+    
+}
+
+bool isInterger(const string& str){
+    if(str.front() >= '0' && str.front() <= '9')
+        for(string::const_iterator itr = str.cbegin(); itr != str.cend(); itr++){
+            if(*itr >= '0' && *itr <= '9')
+                continue;
+            else
+                return false;
+        }
+    else
+        return false;
+
+    return true;
+
+    // <整数> → <数字>│<整数> <数字>
+}
+
+bool isConstString(const string& str){
+    if( str.front() ==  '\'' && str.back() == '\'')
+        for(int i = 1 ; i < str.size()-1 ; i++){
+            if(str[i] == '\'') return false;
+            else continue;
+        }
+    else
+        return false;
+    
+    return true;
+
+    // <字符常数> → ' 除 {'} 外的任意字符串 '
+}
+
+// 判断一个TOKEN串类型
+void analyzeToken(){
+    string temp_str = "";
+    string temp_bounder = "";
+    vector<string> _identifiers; // 用于储存已经定义了的标识符
+    vector<string> _ConstStrings;// 用于储存已经定义了的常字符串
+    vector<string> _Integers; // 用于储存已经定义了的整数
+    char ch;
+    while(ch = cin.get()){
+        if(ch == '\n' || ch == ' '){
+            if(temp_str != ""){
+                if(isReservedWords(temp_str)) {print_token_type(temp_str, 0); temp_str="";}
+                else if(isIdentifier(temp_str)) {
+                    if(findTheString(_identifiers, temp_str) == -1){
+                        number_of_identifier++; 
+                        print_token_type(temp_str, 1);
+                        _identifiers.push_back(temp_str);
+                    } 
+                    else{
+                        int temp_pos = findTheString(_identifiers, temp_str);
+                        cout <<"( 36 , "<< temp_pos  << " )" <<'\t';
+                    }
+                    temp_str = "";
+                    }
+                else if(isInterger(temp_str)) {
+                    if(findTheString(_Integers, temp_str) == -1){
+                        number_of_identifier++; 
+                        print_token_type(temp_str, 2);
+                        _Integers.push_back(temp_str);
+                    } 
+                    else{
+                        int temp_pos = findTheString(_Integers, temp_str);
+                        cout <<"( 36 , "<< temp_pos  << " )" <<'\t';
+                    }
+                    temp_str = "";
+                    }
+                else if(isConstString(temp_str)) {
+                    if(findTheString(_ConstStrings, temp_str) == -1){
+                        number_of_identifier++; 
+                        print_token_type(temp_str, 3);
+                        _ConstStrings.push_back(temp_str);
+                    } 
+                    else{
+                        int temp_pos = findTheString(_ConstStrings, temp_str);
+                        cout <<"( 36 , "<< temp_pos  << " )" <<'\t';
+                    }
+                    temp_str = "";
+                }
+                else {print_token_type(temp_str, -1); temp_str = "";} 
+            }
+            // 如果是正常界符则进行打印
+            // 如果是注释符号则省略掉中间的内容
+             else if(temp_bounder != "") {
+                 if(temp_bounder == "/*"){
+                     string tmp_bounder_str = ""; // 用于存放注释符号中间的内容
+                     char temp_ch;
+                     while(temp_ch = cin.get()){
+                         if(tmp_bounder_str.length() == 2 && tmp_bounder_str == "*/"){
+                            break;
+                         }
+                         if(temp_ch == '*')
+                            tmp_bounder_str += temp_ch;
+
+                         else if(temp_ch == '/')
+                            tmp_bounder_str += temp_ch;
+                     }
+                 } 
+                 else{
+                    print_token_type(temp_bounder, 4); 
+                 } 
+                  temp_bounder = "";
+                }
+            
+            else
+                continue;
+        }
+        else if (isBounder(ch)){
+            temp_bounder += ch;
+            if(temp_str != ""){
+                if(isReservedWords(temp_str)) {print_token_type(temp_str, 0); temp_str="";}
+                else if(isIdentifier(temp_str)) {
+                    if(findTheString(_identifiers, temp_str) == -1){
+                        number_of_identifier++; 
+                        print_token_type(temp_str, 1);
+                        _identifiers.push_back(temp_str);
+                    } 
+                    else{
+                        int temp_pos = findTheString(_identifiers, temp_str);
+                        cout <<"( 36 , "<< temp_pos << " )" <<'\t';
+                    }
+                    temp_str = "";
+                    }
+                else if(isInterger(temp_str)) {
+                    if(findTheString(_Integers, temp_str) == -1){
+                        number_of_identifier++; 
+                        print_token_type(temp_str, 2);
+                        _Integers.push_back(temp_str);
+                    } 
+                    else{
+                        int temp_pos = findTheString(_Integers, temp_str);
+                        cout <<"( 36 , "<< temp_pos << " )" <<'\t';
+                    }
+                    temp_str = "";
+                    }
+                else if(isConstString(temp_str)) {
+                    if(findTheString(_ConstStrings, temp_str) == -1){
+                        number_of_identifier++; 
+                        print_token_type(temp_str, 3);
+                        _ConstStrings.push_back(temp_str);
+                    } 
+                    else{
+                        int temp_pos = findTheString(_ConstStrings, temp_str);
+                        cout <<"( 36 , "<< temp_pos << " )" <<'\t';
+                    }
+                    temp_str = "";
+                }
+                else {print_token_type(temp_str, -1); temp_str = "";}    
+            }
+            else
+                continue;
+        }
+
+        else{
+            temp_str += ch;
+            if(temp_bounder != "") {
+                 if(temp_bounder == "/*"){
+                     string tmp_bounder_str = ""; // 用于存放注释符号中间的内容
+                     char temp_ch;
+                     while(temp_ch = cin.get()){
+                         if(tmp_bounder_str.length() == 2 && tmp_bounder_str == "*/"){
+                            break;
+                         }
+                         if(temp_ch == '*')
+                            tmp_bounder_str += temp_ch;
+
+                         else if(temp_ch == '/')
+                            tmp_bounder_str += temp_ch;
+                     }
+                 } 
+                 else{
+                    print_token_type(temp_bounder, 4); 
+                 } 
+                  temp_bounder = "";
+                }
+            else 
+                continue;
+        }
+    }
+}
+
+void print_token_type(const string& str, int n){
+    switch (n)
+    {
+    case 0:// 是保留字
+        {
+        int reserved_code = find_pos(str, ReservedWords, 35) + 1;
+        cout <<"( " << reserved_code <<" , " << "- )" <<'\t';
+        break;
+        }
+    
+    case 1:// 是标识符
+        {
+        cout <<"( 36 , "<< number_of_identifier << " )" <<'\t';
+        break;
+        }
+
+    case 2:// 是整数
+        {
+        cout <<"( 37 , "<< number_of_identifier << " )" <<'\t';
+        break;
+        }
+    
+    case 3:// 是字符常数
+        {
+        cout <<"( 38 , "<< number_of_identifier << " )" <<'\t';
+        break;
+        }
+    
+    case 4:// 是界符
+        {
+        int bounder_code = find_pos(str, one_side_Bound, 22) + 39;
+        cout <<"( " << bounder_code <<" , " << "- )" <<'\t';
+        break;
+        }
+
+    default:
+        {
+        cout << "( UNIDENTIFIED , - )" <<'\t';
+        break;
+        }
+    }
+}
+
+
+void init(){
+
+    cout << " Huang Ziyang, Computer Science and Technology 1, 201930341229 " << endl;
+    cout << " Please enter the program: " <<endl;
+    analyzeToken();
+}
+
+int main(){
+
+    init();
+
+    return 0;
+}
